@@ -40,6 +40,7 @@ public class EmailServiceImpl implements EmailService {
         record.setSubject(emailRequest.getSubject());
         record.setBody(emailRequest.getBody());
         record.setStatus(EmailStatus.QUEUED);
+        record.setRetryCount(0);
         record.setCreatedAt(LocalDateTime.now());
 
         emailRepository.save(record);

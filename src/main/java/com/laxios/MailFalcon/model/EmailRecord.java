@@ -15,6 +15,7 @@ public class EmailRecord {
     private String subject;
     private String body;
     private EmailStatus status;
+    private int retryCount;
     private String errorMessage;
     private LocalDateTime createdAt;
     private LocalDateTime sentAt;
