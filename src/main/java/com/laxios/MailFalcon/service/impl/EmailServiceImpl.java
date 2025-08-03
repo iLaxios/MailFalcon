@@ -16,6 +16,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -53,7 +55,6 @@ public class EmailServiceImpl implements EmailService {
             message.setSubject(emailRequest.getSubject());
             message.setText(emailRequest.getBody());
             message.setFrom("test@email.com");
-
             emailSender.send(message);
 
             record.setStatus(EmailStatus.SENT);
@@ -66,5 +67,10 @@ public class EmailServiceImpl implements EmailService {
         }
 
         emailRepository.save(record);
+    }
+
+    @Override
+    public List<EmailRecord> getAllEmails() {
+        return new ArrayList<>(emailRepository.findAll().values());
     }
 }
