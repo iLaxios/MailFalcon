@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,7 +17,9 @@ public class EmailServiceImpl implements EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailServiceImpl.class);
 
     @Override
+    @Async("mailExecutor")
     public void sendSimpleMessage(String to, String subject, String text) {
+        System.out.println("Sending email to: " + to + " on thread: " + Thread.currentThread().getName());
         logger.info("Preparing to send email to {}", to);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
