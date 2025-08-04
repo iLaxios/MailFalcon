@@ -19,7 +19,7 @@ public class MailController {
     @PostMapping("/send")
     public String sendMail(@RequestBody EmailRequest emailRequest) {
 
-        emailService.sendSimpleMessage(emailRequest);
+        emailService.queueMail(emailRequest);
         return "Email sent to " + emailRequest.getTo();
     }
 

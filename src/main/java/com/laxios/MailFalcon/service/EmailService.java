@@ -6,6 +6,7 @@ import com.laxios.MailFalcon.model.EmailRecord;
 import java.util.List;
 
 public interface EmailService {
-    void sendSimpleMessage(EmailRequest emailRequest);
+    void queueMail(EmailRequest emailRequest);
+    void sendMail(EmailRequest emailRequest);
     List<EmailRecord> getAllEmails();
 }
