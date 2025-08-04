@@ -5,6 +5,7 @@ import com.laxios.MailFalcon.dto.EmailRequest;
 import com.laxios.MailFalcon.service.EmailService;
 import com.laxios.MailFalcon.service.RedisQueueService;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,16 +18,23 @@ import java.util.concurrent.Executors;
 @RequiredArgsConstructor
 public class MailQueueProcessor {
 
+    private volatile boolean running = true;
+
     private final RedisQueueService redisQueueService;
     private final ObjectMapper objectMapper;
     private final EmailService emailService;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    @PreDestroy
+    public void stop() {
+        running = false;
+    }
+
     @PostConstruct
     public void startProcessing() {
         executor.submit(() -> {
-            while (true) {
+            while (running) {
                 try {
                     String payload = redisQueueService.dequeueMail();
                     if (payload != null) {
@@ -37,7 +45,11 @@ public class MailQueueProcessor {
                     }
                 } catch (Exception e) {
                     log.error("Error processing mail queue", e);
-                    Thread.sleep(100); // avoid spinning on exceptions
+                    try {
+                        Thread.sleep(100); // avoid spinning on exceptions
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
         });

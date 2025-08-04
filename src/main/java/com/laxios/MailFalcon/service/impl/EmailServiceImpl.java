@@ -32,6 +32,20 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void queueMail(EmailRequest emailRequest) {
+        String id = UUID.randomUUID().toString();
+
+        EmailRecord record = new EmailRecord();
+        record.setId(id);
+        record.setTo(emailRequest.getTo());
+        record.setSubject(emailRequest.getSubject());
+        record.setBody(emailRequest.getBody());
+        record.setStatus(EmailStatus.QUEUED);
+        record.setRetryCount(0);
+        record.setCreatedAt(LocalDateTime.now());
+
+        repository.save(record);
+        emailRequest.setRecordId(id);
+
         try {
             String payload = objectMapper.writeValueAsString(emailRequest);
             redisQueueService.enqueueMail(payload);
@@ -44,17 +58,10 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async("mailExecutor")
     public void sendMail(EmailRequest emailRequest) {
-        String id = UUID.randomUUID().toString();
 
-        EmailRecord record = new EmailRecord();
-        record.setId(id);
-        record.setTo(emailRequest.getTo());
-        record.setSubject(emailRequest.getSubject());
-        record.setBody(emailRequest.getBody());
+        String id = emailRequest.getRecordId();
+        EmailRecord record = repository.findById(id);
         record.setStatus(EmailStatus.SENDING);
-        record.setRetryCount(0);
-        record.setCreatedAt(LocalDateTime.now());
-
         try {
             repository.save(record);
 
@@ -70,17 +77,28 @@ public class EmailServiceImpl implements EmailService {
             log.info("Email [{}] sent successfully", id);
 
         } catch (Exception e) {
-            record.setStatus(EmailStatus.FAILED);
-            record.setErrorMessage(e.getMessage());
-            log.error("Email [{}] failed to send: {}", id, e.getMessage());
 
-            // Enqueue to retry queue
-            try {
-                String payload = objectMapper.writeValueAsString(emailRequest);
-                redisQueueService.enqueueRetry(payload);
-                log.warn("Email [{}] moved to retry queue", id);
-            } catch (JsonProcessingException jsonEx) {
-                log.error("Retry payload serialization failed", jsonEx);
+            record.setErrorMessage(e.getMessage());
+            int MAX_RETRIES = 3;
+            if(record.getRetryCount() >= MAX_RETRIES) {
+                record.setStatus(EmailStatus.FAILED_PERMANANTLY);
+                log.error("Email [{}] permanantly failed to be sent: {}", id, e.getMessage());
+            }
+
+            else {
+
+                record.setStatus(EmailStatus.FAILED);
+                record.setRetryCount(record.getRetryCount() + 1);
+                log.error("Email [{}] failed to send: {}", id, e.getMessage());
+
+                // Enqueue to retry queue
+                try {
+                    String payload = objectMapper.writeValueAsString(emailRequest);
+                    redisQueueService.enqueueRetry(payload);
+                    log.warn("Email [{}] moved to retry queue", id);
+                } catch (JsonProcessingException jsonEx) {
+                    log.error("Retry payload serialization failed", jsonEx);
+                }
             }
         }
 
