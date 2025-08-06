@@ -1,6 +1,5 @@
 package com.laxios.MailFalcon.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.laxios.MailFalcon.dto.EmailRequest;
 import com.laxios.MailFalcon.model.EmailRecord;
@@ -46,13 +45,8 @@ public class EmailServiceImpl implements EmailService {
         repository.save(record);
         emailRequest.setRecordId(id);
 
-        try {
-            String payload = objectMapper.writeValueAsString(emailRequest);
-            redisQueueService.enqueueMail(payload);
-            log.info("Email to {} queued successfully", emailRequest.getTo());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize email request", e);
-        }
+        redisQueueService.enqueueMail(emailRequest);
+        log.info("Email to {} queued successfully", emailRequest.getTo());
     }
 
     @Override
@@ -92,13 +86,9 @@ public class EmailServiceImpl implements EmailService {
                 log.error("Email [{}] failed to send: {}", id, e.getMessage());
 
                 // Enqueue to retry queue
-                try {
-                    String payload = objectMapper.writeValueAsString(emailRequest);
-                    redisQueueService.enqueueRetry(payload);
-                    log.warn("Email [{}] moved to retry queue", id);
-                } catch (JsonProcessingException jsonEx) {
-                    log.error("Retry payload serialization failed", jsonEx);
-                }
+                redisQueueService.enqueueRetry(emailRequest);
+                log.warn("Email [{}] moved to retry queue", id);
+
             }
         }
 

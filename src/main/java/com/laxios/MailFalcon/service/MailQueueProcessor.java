@@ -36,9 +36,8 @@ public class MailQueueProcessor {
         executor.submit(() -> {
             while (running) {
                 try {
-                    String payload = redisQueueService.dequeueMail();
-                    if (payload != null) {
-                        EmailRequest request = objectMapper.readValue(payload, EmailRequest.class);
+                    EmailRequest request = redisQueueService.dequeueMail();
+                    if (request != null) {
                         emailService.sendMail(request);
                     } else {
                         Thread.sleep(100); // brief pause to avoid busy waiting

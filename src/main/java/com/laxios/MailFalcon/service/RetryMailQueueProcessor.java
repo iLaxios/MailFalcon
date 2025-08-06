@@ -1,6 +1,5 @@
 package com.laxios.MailFalcon.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.laxios.MailFalcon.dto.EmailRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,18 +13,16 @@ public class RetryMailQueueProcessor {
 
     private final RedisQueueService RedisQueueService;
     private final EmailService emailService;
-    private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelay = 10000)
     public void processRetryQueue() {
-        String payload;
-        while ((payload = RedisQueueService.dequeueRetry()) != null) {
+        EmailRequest emailRequest;
+        while ((emailRequest = RedisQueueService.dequeueRetry()) != null) {
             try {
-                EmailRequest emailRequest = objectMapper.readValue(payload, EmailRequest.class);
                 emailService.sendMail(emailRequest); // Async method
             } catch (Exception e) {
                 log.error("Retry processing failed, re-queuing", e);
-                RedisQueueService.enqueueRetry(payload);
+                RedisQueueService.enqueueRetry(emailRequest);
             }
         }
     }

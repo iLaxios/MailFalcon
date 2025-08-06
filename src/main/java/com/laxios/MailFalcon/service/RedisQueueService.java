@@ -1,31 +1,33 @@
 package com.laxios.MailFalcon.service;
 
+import com.laxios.MailFalcon.dto.EmailRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class RedisQueueService {
 
-    private final StringRedisTemplate redisTemplate;
+    private final RedisTemplate<String, EmailRequest> emailRequestRedisTemplate;
 
-    private final String MAIN_QUEUE = "mailQueue";
-    private final String RETRY_QUEUE = "mailRetryQueue";
+    private static final String MAIN_QUEUE = "mailQueue";
+    private static final String RETRY_QUEUE = "mailRetryQueue";
 
-    public void enqueueMail(String payload) {
-        redisTemplate.opsForList().rightPush(MAIN_QUEUE, payload);
+    public void enqueueMail(EmailRequest request) {
+        emailRequestRedisTemplate.opsForList().rightPush(MAIN_QUEUE, request);
     }
 
-    public String dequeueMail() {
-        return redisTemplate.opsForList().leftPop(MAIN_QUEUE);
+    public EmailRequest dequeueMail() {
+        return emailRequestRedisTemplate.opsForList().leftPop(MAIN_QUEUE);
     }
 
-    public void enqueueRetry(String payload) {
-        redisTemplate.opsForList().rightPush(RETRY_QUEUE, payload);
+    public void enqueueRetry(EmailRequest request) {
+        emailRequestRedisTemplate.opsForList().rightPush(RETRY_QUEUE, request);
     }
 
-    public String dequeueRetry() {
-        return redisTemplate.opsForList().leftPop(RETRY_QUEUE);
+    public EmailRequest dequeueRetry() {
+        return emailRequestRedisTemplate.opsForList().leftPop(RETRY_QUEUE);
     }
 }
+
