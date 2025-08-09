@@ -1,6 +1,6 @@
 package com.laxios.MailFalcon.service;
 
-import com.laxios.MailFalcon.dto.EmailRequest;
+import com.laxios.MailFalcon.model.EmailRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -9,24 +9,24 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RedisQueueService {
 
-    private final RedisTemplate<String, EmailRequest> emailRequestRedisTemplate;
+    private final RedisTemplate<String, EmailRecord> emailRequestRedisTemplate;
 
     private static final String MAIN_QUEUE = "mailQueue";
     private static final String RETRY_QUEUE = "mailRetryQueue";
 
-    public void enqueueMail(EmailRequest request) {
+    public void enqueueMail(EmailRecord request) {
         emailRequestRedisTemplate.opsForList().rightPush(MAIN_QUEUE, request);
     }
 
-    public EmailRequest dequeueMail() {
+    public EmailRecord dequeueMail() {
         return emailRequestRedisTemplate.opsForList().leftPop(MAIN_QUEUE);
     }
 
-    public void enqueueRetry(EmailRequest request) {
+    public void enqueueRetry(EmailRecord request) {
         emailRequestRedisTemplate.opsForList().rightPush(RETRY_QUEUE, request);
     }
 
-    public EmailRequest dequeueRetry() {
+    public EmailRecord dequeueRetry() {
         return emailRequestRedisTemplate.opsForList().leftPop(RETRY_QUEUE);
     }
 }

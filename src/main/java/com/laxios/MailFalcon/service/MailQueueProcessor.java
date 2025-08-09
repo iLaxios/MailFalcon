@@ -2,6 +2,7 @@ package com.laxios.MailFalcon.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.laxios.MailFalcon.dto.EmailRequest;
+import com.laxios.MailFalcon.model.EmailRecord;
 import com.laxios.MailFalcon.service.EmailService;
 import com.laxios.MailFalcon.service.RedisQueueService;
 import jakarta.annotation.PostConstruct;
@@ -36,9 +37,9 @@ public class MailQueueProcessor {
         executor.submit(() -> {
             while (running) {
                 try {
-                    EmailRequest request = redisQueueService.dequeueMail();
-                    if (request != null) {
-                        emailService.sendMail(request);
+                    EmailRecord emailRecord = redisQueueService.dequeueMail();
+                    if (emailRecord != null) {
+                        emailService.sendMail(emailRecord);
                     } else {
                         Thread.sleep(100); // brief pause to avoid busy waiting
                     }

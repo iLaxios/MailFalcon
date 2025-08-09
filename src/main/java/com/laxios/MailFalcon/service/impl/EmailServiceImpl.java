@@ -33,66 +33,65 @@ public class EmailServiceImpl implements EmailService {
     public void queueMail(EmailRequest emailRequest) {
         String id = UUID.randomUUID().toString();
 
-        EmailRecord record = new EmailRecord();
-        record.setId(id);
-        record.setTo(emailRequest.getTo());
-        record.setSubject(emailRequest.getSubject());
-        record.setBody(emailRequest.getBody());
-        record.setStatus(EmailStatus.QUEUED);
-        record.setRetryCount(0);
-        record.setCreatedAt(LocalDateTime.now());
+        EmailRecord emailRecord = new EmailRecord();
+        emailRecord.setId(id);
+        emailRecord.setTo(emailRequest.getTo());
+        emailRecord.setSubject(emailRequest.getSubject());
+        emailRecord.setBody(emailRequest.getBody());
+        emailRecord.setStatus(EmailStatus.QUEUED);
+        emailRecord.setRetryCount(0);
+        emailRecord.setCreatedAt(LocalDateTime.now());
 
-        repository.save(record);
+        repository.save(emailRecord);
         emailRequest.setRecordId(id);
 
-        redisQueueService.enqueueMail(emailRequest);
-        log.info("Email to {} queued successfully", emailRequest.getTo());
+        redisQueueService.enqueueMail(emailRecord);
+        log.info("Email to {} queued successfully", emailRecord.getTo());
     }
 
     @Override
     @Async("mailExecutor")
-    public void sendMail(EmailRequest emailRequest) {
+    public void sendMail(EmailRecord emailRecord) {
 
-        String id = emailRequest.getRecordId();
-        EmailRecord record = repository.findById(id);
-        record.setStatus(EmailStatus.SENDING);
+        emailRecord.setStatus(EmailStatus.SENDING);
+        String id = emailRecord.getId();
         try {
-            repository.save(record);
+            repository.save(emailRecord);
 
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(emailRequest.getTo());
-            message.setSubject(emailRequest.getSubject());
-            message.setText(emailRequest.getBody());
+            message.setTo(emailRecord.getTo());
+            message.setSubject(emailRecord.getSubject());
+            message.setText(emailRecord.getBody());
             message.setFrom("test@email.com");
             mailSender.send(message);
 
-            record.setStatus(EmailStatus.SENT);
-            record.setSentAt(LocalDateTime.now());
+            emailRecord.setStatus(EmailStatus.SENT);
+            emailRecord.setSentAt(LocalDateTime.now());
             log.info("Email [{}] sent successfully", id);
 
         } catch (Exception e) {
 
-            record.setErrorMessage(e.getMessage());
+            emailRecord.setErrorMessage(e.getMessage());
             int MAX_RETRIES = 3;
-            if(record.getRetryCount() >= MAX_RETRIES) {
-                record.setStatus(EmailStatus.FAILED_PERMANANTLY);
+            if(emailRecord.getRetryCount() >= MAX_RETRIES) {
+                emailRecord.setStatus(EmailStatus.FAILED_PERMANANTLY);
                 log.error("Email [{}] permanantly failed to be sent: {}", id, e.getMessage());
             }
 
             else {
 
-                record.setStatus(EmailStatus.FAILED);
-                record.setRetryCount(record.getRetryCount() + 1);
+                emailRecord.setStatus(EmailStatus.FAILED);
+                emailRecord.setRetryCount(emailRecord.getRetryCount() + 1);
                 log.error("Email [{}] failed to send: {}", id, e.getMessage());
 
                 // Enqueue to retry queue
-                redisQueueService.enqueueRetry(emailRequest);
+                redisQueueService.enqueueRetry(emailRecord);
                 log.warn("Email [{}] moved to retry queue", id);
 
             }
         }
 
-        repository.save(record);
+        repository.save(emailRecord);
     }
 
     public List<EmailRecord> getAllEmails() {

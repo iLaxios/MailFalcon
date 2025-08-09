@@ -1,6 +1,7 @@
 package com.laxios.MailFalcon.service;
 
 import com.laxios.MailFalcon.dto.EmailRequest;
+import com.laxios.MailFalcon.model.EmailRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,13 +17,13 @@ public class RetryMailQueueProcessor {
 
     @Scheduled(fixedDelay = 10000)
     public void processRetryQueue() {
-        EmailRequest emailRequest;
-        while ((emailRequest = RedisQueueService.dequeueRetry()) != null) {
+        EmailRecord emailRecord;
+        while ((emailRecord = RedisQueueService.dequeueRetry()) != null) {
             try {
-                emailService.sendMail(emailRequest); // Async method
+                emailService.sendMail(emailRecord); // Async method
             } catch (Exception e) {
                 log.error("Retry processing failed, re-queuing", e);
-                RedisQueueService.enqueueRetry(emailRequest);
+                RedisQueueService.enqueueRetry(emailRecord);
             }
         }
     }

@@ -1,7 +1,9 @@
 package com.laxios.MailFalcon.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.laxios.MailFalcon.dto.EmailRequest;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.laxios.MailFalcon.model.EmailRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -17,14 +19,17 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, EmailRequest> redisTemplate(LettuceConnectionFactory connectionFactory) {
-        RedisTemplate<String, EmailRequest> template = new RedisTemplate<>();
+    public RedisTemplate<String, EmailRecord> redisTemplate(LettuceConnectionFactory connectionFactory) {
+        RedisTemplate<String, EmailRecord> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        Jackson2JsonRedisSerializer<EmailRequest> serializer =
-                new Jackson2JsonRedisSerializer<>(EmailRequest.class);
+        Jackson2JsonRedisSerializer<EmailRecord> serializer =
+                new Jackson2JsonRedisSerializer<>(EmailRecord.class);
 
-        ObjectMapper mapper = new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         serializer.setObjectMapper(mapper);
 
         template.setDefaultSerializer(serializer);
