@@ -94,7 +94,10 @@ public class EmailServiceImpl implements EmailService {
         repository.save(emailRecord);
     }
 
-    public List<EmailRecord> getAllEmails() {
-        return new ArrayList<>(repository.findAll().values());
+    public EmailRecord getEmailById(String id) {
+        // First check Redis for transient states
+        EmailRecord email = repository.findById(id);
+
+        return email; // should implement email retrieval from persistent DB.
     }
 }

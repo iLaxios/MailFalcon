@@ -8,5 +8,5 @@ import java.util.List;
 public interface EmailService {
     void queueMail(EmailRequest emailRequest);
     void sendMail(EmailRecord emailRecord);
-    List<EmailRecord> getAllEmails();
+    EmailRecord getEmailById(String id);
 }

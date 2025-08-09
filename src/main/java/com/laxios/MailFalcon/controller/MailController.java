@@ -23,8 +23,9 @@ public class MailController {
         return "Email sent to " + emailRequest.getTo();
     }
 
-    @GetMapping("/all")
-    public ResponseEntity<List<EmailRecord>> getAllMails() {
-        return ResponseEntity.ok(emailService.getAllEmails());
+    @GetMapping("/status/{id}")
+    public ResponseEntity<EmailRecord> getEmailById(@PathVariable("id") String id) {
+        EmailRecord email = emailService.getEmailById(id);
+        return email != null ? ResponseEntity.ok(email) : ResponseEntity.notFound().build();
     }
 }
