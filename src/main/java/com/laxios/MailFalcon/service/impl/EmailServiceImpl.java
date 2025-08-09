@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.laxios.MailFalcon.dto.EmailRequest;
 import com.laxios.MailFalcon.model.EmailRecord;
 import com.laxios.MailFalcon.model.EmailStatus;
-import com.laxios.MailFalcon.repository.EmailRepository;
+import com.laxios.MailFalcon.repository.EmailJpaRepository;
+import com.laxios.MailFalcon.repository.EmailRedisRepository;
 import com.laxios.MailFalcon.service.EmailService;
 import com.laxios.MailFalcon.service.RedisQueueService;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +16,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -25,7 +24,8 @@ import java.util.UUID;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
-    private final EmailRepository repository;
+    private final EmailRedisRepository emailRedisRepository;
+    private final EmailJpaRepository emailJpaRepository;
     private final RedisQueueService redisQueueService;
     private final ObjectMapper objectMapper;
 
@@ -35,18 +35,18 @@ public class EmailServiceImpl implements EmailService {
 
         EmailRecord emailRecord = new EmailRecord();
         emailRecord.setId(id);
-        emailRecord.setTo(emailRequest.getTo());
+        emailRecord.setRecipient(emailRequest.getTo());
         emailRecord.setSubject(emailRequest.getSubject());
         emailRecord.setBody(emailRequest.getBody());
         emailRecord.setStatus(EmailStatus.QUEUED);
         emailRecord.setRetryCount(0);
         emailRecord.setCreatedAt(LocalDateTime.now());
 
-        repository.save(emailRecord);
+        emailRedisRepository.save(emailRecord);
         emailRequest.setRecordId(id);
 
         redisQueueService.enqueueMail(emailRecord);
-        log.info("Email to {} queued successfully", emailRecord.getTo());
+        log.info("Email to {} queued successfully", emailRecord.getRecipient());
     }
 
     @Override
@@ -56,10 +56,10 @@ public class EmailServiceImpl implements EmailService {
         emailRecord.setStatus(EmailStatus.SENDING);
         String id = emailRecord.getId();
         try {
-            repository.save(emailRecord);
+            emailRedisRepository.save(emailRecord);
 
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(emailRecord.getTo());
+            message.setTo(emailRecord.getRecipient());
             message.setSubject(emailRecord.getSubject());
             message.setText(emailRecord.getBody());
             message.setFrom("test@email.com");
@@ -93,13 +93,26 @@ public class EmailServiceImpl implements EmailService {
             }
         }
 
-        repository.save(emailRecord);
+        emailJpaRepository.save(emailRecord);
+        emailRedisRepository.delete(id);
     }
 
     public EmailRecord getEmailById(String id) {
         // First check Redis for transient states
-        EmailRecord email = repository.findById(id);
-
-        return email; // should implement email retrieval from persistent DB.
+        EmailRecord email = emailRedisRepository.findById(id);
+        if(email == null) {
+            // try to fetch from DB
+            email = emailJpaRepository.findById(id).orElse(null);
+            if(email == null) {
+                log.error("{}:Email could not be found in DB", id);
+            }
+            else {
+                log.info("{}:Found in DB", id);
+            }
+        }
+        else {
+            log.info("{}:Found in redis cache", id);
+        }
+        return email;
     }
 }
