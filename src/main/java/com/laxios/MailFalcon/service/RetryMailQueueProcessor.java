@@ -18,12 +18,14 @@ public class RetryMailQueueProcessor {
     @Scheduled(fixedDelay = 10000)
     public void processRetryQueue() {
         EmailRecord emailRecord;
-        while ((emailRecord = RedisQueueService.dequeueRetry()) != null) {
+        while ((emailRecord = RedisQueueService.dequeueRetryReady()) != null) {
             try {
                 emailService.sendMail(emailRecord); // Async method
             } catch (Exception e) {
                 log.error("Retry processing failed, re-queuing", e);
-                RedisQueueService.enqueueRetry(emailRecord);
+                final int BASE_DELAY_SECONDS = 60;
+                long delay = (long) Math.pow(2, emailRecord.getRetryCount()) * BASE_DELAY_SECONDS;
+                RedisQueueService.enqueueRetryWithDelay(emailRecord, delay);
             }
         }
     }

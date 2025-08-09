@@ -80,12 +80,14 @@ public class EmailServiceImpl implements EmailService {
 
             else {
 
+                final int BASE_DELAY_SECONDS = 60;
                 emailRecord.setStatus(EmailStatus.FAILED);
                 emailRecord.setRetryCount(emailRecord.getRetryCount() + 1);
                 log.error("Email [{}] failed to send: {}", id, e.getMessage());
 
                 // Enqueue to retry queue
-                redisQueueService.enqueueRetry(emailRecord);
+                long delay = (long) Math.pow(2, emailRecord.getRetryCount()) * BASE_DELAY_SECONDS;
+                redisQueueService.enqueueRetryWithDelay(emailRecord, delay);
                 log.warn("Email [{}] moved to retry queue", id);
 
             }
